@@ -408,7 +408,6 @@ var pages = {
 		private: require("./backend/pages/accounts/private.js"),
 		profile: require("./backend/pages/accounts/profile.js"),
 		register: require("./backend/pages/accounts/register.js"),
-		register_complete: require("./backend/pages/accounts/register_complete.js"),
 		tabular: require("./backend/pages/accounts/tabular.js")
 	},
 	admin: {
@@ -430,12 +429,10 @@ var pages = {
 		test: require("./backend/pages/other/test.js")
 	},
 	"404": require("./backend/pages/404.js"),
-	activate_complete: require("./backend/pages/activate_complete.js"),
 	coordlink: require("./backend/pages/coordlink.js"),
 	home: require("./backend/pages/home.js"),
 	protect: require("./backend/pages/protect.js"),
 	protect_char: require("./backend/pages/protect_char.js"),
-	register_failed: require("./backend/pages/register_failed.js"),
 	script_edit: require("./backend/pages/script_edit.js"),
 	script_manager: require("./backend/pages/script_manager.js"),
 	script_view: require("./backend/pages/script_view.js"),
