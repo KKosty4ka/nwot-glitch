@@ -65,8 +65,6 @@ var ipv4_to_int    = ipaddress.ipv4_to_int;
 var ipv6_to_int    = ipaddress.ipv6_to_int;
 var ipv4_to_range  = ipaddress.ipv4_to_range;
 var ipv6_to_range  = ipaddress.ipv6_to_range;
-var is_cf_ipv4_int = ipaddress.is_cf_ipv4_int;
-var is_cf_ipv6_int = ipaddress.is_cf_ipv6_int;
 
 var DATA_PATH = "./.data/nwotdata/";
 var SETTINGS_PATH = DATA_PATH + "settings.json";
@@ -1413,9 +1411,8 @@ async function process_request(req, res, compCallbacks) {
 	var acceptEncoding = parseAcceptEncoding(req.headers["accept-encoding"]);
 
 	var realIp = req.headers["X-Real-IP"] || req.headers["x-real-ip"];
-	var cfIp = req.headers["CF-Connecting-IP"] || req.headers["cf-connecting-ip"];
 	var remIp = req.socket.remoteAddress;
-	var evalIp = evaluateIpAddress(remIp, realIp, cfIp);
+	var evalIp = evaluateIpAddress(remIp, realIp);
 	var ipAddress = evalIp[0];
 	var ipAddressFam = evalIp[1];
 	var ipAddressVal = evalIp[2];
@@ -1861,7 +1858,7 @@ function broadcastMonitorEvent(type, data) {
 }
 
 // todo: fix this
-function evaluateIpAddress(remIp, realIp, cfIp) {
+function evaluateIpAddress(remIp, realIp) {
 	var ipAddress = remIp;
 	var ipAddressFam = 4;
 	var ipAddressVal = 1;
@@ -1889,36 +1886,8 @@ function evaluateIpAddress(remIp, realIp, cfIp) {
 		}
 		if(ipAddressFam == 4) {
 			ipAddressVal = ipv4_to_int(ipAddress);
-			if(is_cf_ipv4_int(ipAddressVal)) {
-				ipAddress = cfIp;
-				if(!ipAddress) {
-					ipAddress = "0.0.0.0";
-				}
-				if(ipAddress.indexOf(".") > -1) {
-					ipAddressFam = 4;
-					ipAddressVal = ipv4_to_int(ipAddress);
-				} else {
-					ipAddressFam = 6;
-					ipAddress = normalize_ipv6(ipAddress);
-					ipAddressVal = ipv6_to_int(ipAddress);
-				}
-			}
 		} else if(ipAddressFam == 6) {
 			ipAddressVal = ipv6_to_int(ipAddress);
-			if(is_cf_ipv6_int(ipAddressVal)) {
-				ipAddress = cfIp;
-				if(!ipAddress) {
-					ipAddress = "0.0.0.0";
-				}
-				if(ipAddress.indexOf(".") > -1) {
-					ipAddressFam = 4;
-					ipAddressVal = ipv4_to_int(ipAddress);
-				} else {
-					ipAddressFam = 6;
-					ipAddress = normalize_ipv6(ipAddress);
-					ipAddressVal = ipv6_to_int(ipAddress);
-				}
-			}
 		}
 	}
 	return [ipAddress, ipAddressFam, ipAddressVal];
@@ -2039,11 +2008,10 @@ async function manageWebsocketConnection(ws, req) {
 	var bytesWritten = 0;
 	var bytesRead = 0;
 	
-	// process ip address headers from cloudflare/nginx
+	// process ip address headers from nginx
 	var realIp = req.headers["X-Real-IP"] || req.headers["x-real-ip"];
-	var cfIp = req.headers["CF-Connecting-IP"] || req.headers["cf-connecting-ip"];
 	var remIp = req.socket.remoteAddress;
-	var evalIp = evaluateIpAddress(remIp, realIp, cfIp);
+	var evalIp = evaluateIpAddress(remIp, realIp);
 	ws.sdata.ipAddress = evalIp[0];
 	ws.sdata.ipAddressFam = evalIp[1];
 	ws.sdata.ipAddressVal = evalIp[2];
