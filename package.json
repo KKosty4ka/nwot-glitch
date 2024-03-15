@@ -7,6 +7,10 @@
 		"sqlite3": "^5.1.6",
 		"ws": "^8.14.2"
 	},
+	"engines": {
+		"node": "14.x"
+	},
+	"main": "main.js",
 	"scripts": {
 		"start": "node main.js",
 		"tst": "node --expose-gc main.js --test-server",
