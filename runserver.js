@@ -90,7 +90,7 @@ initializeDirectoryStruct();
 
 const settings = require(SETTINGS_PATH);
 
-var serverPort     = settings.port;
+var serverPort     = process.env.PORT;
 var serverDB       = settings.paths.database;
 var editsDB        = settings.paths.edits;
 var chatDB         = settings.paths.chat_history;
@@ -271,10 +271,6 @@ function toInt64(n) {
 	var a = new BigInt64Array(1);
 	a[0] = BigInt("0x" + n);
 	return a[0];
-}
-
-if(isTestServer) {
-	serverPort = settings.test_port;
 }
 
 function log_error(err) {
@@ -2365,7 +2361,7 @@ async function start_server() {
 
 	createEndpoints();
 
-	server.listen(serverPort, settings.ip, function() {
+	server.listen(serverPort, "0.0.0.0", function() {
 		var addr = server.address();
 
 		console.log("\x1b[92;1mOWOT Server is running\x1b[0m");

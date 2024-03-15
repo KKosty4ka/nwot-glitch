@@ -3,10 +3,7 @@
 
 	"website": "https://ourworldoftext.com/",
 
-	"port": 8080,
-	"test_port": 9090,
-	"ip": null,
-
+	// no idea how to get this working on glitch
 	"monitor": {
 		"enabled": false,
 		"port": null,
