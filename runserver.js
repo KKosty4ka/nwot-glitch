@@ -844,11 +844,7 @@ async function initialize_server() {
 		await db.exec(indexes);
 
 		init = true;
-		if(accountSystem == "local") {
-			account_prompt();
-		} else if(accountSystem == "uvias") {
-			account_prompt(true);
-		}
+		account_prompt();
 	}
 	if(!init) {
 		start_server();
@@ -937,55 +933,16 @@ function checkHash(hash, pass) {
 	return encryptHash(pass, hash[1]) === hash.join("$");
 }
 
-async function account_prompt(isUvias) {
-	var question = "You've just installed the server,\nwhich means you don\'t have any superusers defined.\nWould you like to create one now? (yes/no): ";
-	var resp = await prompt.ask(question);
-	if(resp.toLowerCase() == "yes") {
-		if(!isUvias) {
-			var user = await prompt.ask("Username: ");
-			user = user.trim();
-			if(!user.length) {
-				console.log("Username is too short.");
-				return account_prompt(isUvias);
-			}
-			var pass1 = (await prompt.ask("Password: ", true)).trim();
-			var pass2 = (await prompt.ask("Password (again): ", true)).trim();
-			if(pass1 != pass2) {
-				console.log("Your passwords didn't match.");
-				return account_prompt(isUvias);
-			}
-			if(!pass1) {
-				console.log("Your password is too short.");
-				return account_prompt(isUvias);
-			}
-			var date = Date.now();
-			var passHash = encryptHash(pass1);
-			db.run("INSERT INTO auth_user VALUES(null, ?, '', ?, 1, 3, ?, ?)", [user, passHash, date, date]);
-			console.log("Superuser created successfully.\n");
-		} else {
-			var user = await prompt.ask("Uvias Display Name: ");
-			user = user.trim();
-			if(!user.length) {
-				console.log("Username is too short.");
-				return account_prompt(isUvias);
-			}
-			var db_user = await uvias.get("SELECT to_hex(uid) AS uid, username from accounts.users WHERE lower(username)=lower($1::text)", user);
-			if(!db_user) {
-				console.log("User not found.");
-				return account_prompt(isUvias);
-			}
-			var uid = "x" + db_user.uid;
-			await db_misc.run("INSERT INTO admin_ranks VALUES(?, ?)", [uid, 3]);
-			console.log("Account successfully set as superuser.\n");
-		}
-		start_server();
-	} else if(resp.toLowerCase() == "no") {
-		start_server();
-		return;
-	} else {
-		console.log("Please enter either \"yes\" or \"no\" (not case sensitive).");
-		return account_prompt(isUvias);
-	}
+function account_prompt() {
+	var username = "admin";
+	var password = crypto.randomBytes(32).toString("hex");
+
+	db.run("INSERT INTO auth_user VALUES(null, ?, '', ?, 1, 3, ?, ?)", [username, encryptHash(password), Date.now(), Date.now()]);
+	fs.writeFileSync(".data/admin_creds.txt", `Username: ${username}\nPassword: ${password}\nPlease change it!`, {
+		encoding: "utf-8"
+	});
+
+	console.log("\nAdmin account credentials are stored in .data/admin_creds.txt\nPlease change them.\n");
 }
 
 var prompt_stopped = false;
