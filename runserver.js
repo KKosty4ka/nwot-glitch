@@ -11,7 +11,6 @@ console.log("Starting up...");
 const crypto      = require("crypto");
 const fs          = require("fs");
 const http        = require("http");
-const https       = require("https");
 const isIP        = require("net").isIP;
 const path        = require("path");
 const querystring = require("querystring");
@@ -606,29 +605,6 @@ function loadDbSystems() {
 	db_misc = asyncDbSystem(misc_db);
 }
 
-async function fetchCloudflareIPs(ip_type) {
-	if(ip_type == 4) {
-		ip_type = "ips-v4";
-	} else if(ip_type == 6) {
-		ip_type = "ips-v6";
-	} else {
-		return null;
-	}
-	return new Promise(function(resolve) {
-		https.get("https://www.cloudflare.com/" + ip_type, function(response) {
-			var data = "";
-			response.on("data", function(part) {
-				data += part;
-			});
-			response.on("end", function() {
-				resolve(data);
-			});
-		}).on("error", function() {
-			resolve(null);
-		});
-	});
-}
-
 var valid_methods = ["GET", "POST", "HEAD", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 function valid_method(mtd) {
 	return valid_methods.indexOf(mtd) > -1;
@@ -642,7 +618,6 @@ async function initialize_server() {
 	load_static();
 	setupZipLog();
 	loadDbSystems();
-	manage_https();
 	setupHTTPServer();
 
 	await initialize_misc_db();
@@ -1128,40 +1103,6 @@ function new_token(len) {
 	return token;
 }
 
-var https_reference = https;
-var createHTTPServer = http.createServer;
-var https_disabled = false;
-
-var options = {};
-
-function manage_https() {
-	var private_key = settings.ssl.private_key;
-	var cert = settings.ssl.cert;
-	var chain = settings.ssl.chain;
-
-	if(settings.ssl_enabled) {
-		// check if paths exist
-		https_disabled = (!fs.existsSync(private_key) || !fs.existsSync(cert) || !fs.existsSync(chain));
-	} else {
-		https_disabled = true;
-	}
-
-	if(https_disabled) {
-		console.log("\x1b[31;1mRunning server in HTTP mode\x1b[0m");
-		http.createServer = function(opt, func) {
-			return createHTTPServer(func);
-		}
-		https_reference = http;
-	} else {
-		console.log("\x1b[31;1mDetected HTTPS keys. Running server in HTTPS mode\x1b[0m");
-		options = {
-			key:  fs.readFileSync(private_key),
-			cert: fs.readFileSync(cert),
-			ca:   fs.readFileSync(chain)
-		};
-	}
-}
-
 // TODO: cache user data (only care about uvias)
 async function get_user_info(cookies, is_websocket, dispatch) {
 	/*
@@ -1257,7 +1198,7 @@ var server,
 	HTTPSockets,
 	HTTPSocketID;
 function setupHTTPServer() {
-	server = https_reference.createServer(options, function(req, res) {
+	server = http.createServer({}, function(req, res) {
 		var compCallbacks = [];
 		var cbExecuted = false;
 		process_request(req, res, compCallbacks).then(function() {
