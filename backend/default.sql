@@ -1,7 +1,6 @@
 CREATE TABLE "auth_user" (
     "id" integer NOT NULL PRIMARY KEY,
     "username" varchar(30) NOT NULL UNIQUE,
-    "email" varchar(75) NOT NULL,
     "password" varchar(128) NOT NULL,
     "is_active" bool NOT NULL,
     "level" integer NOT NULL,
@@ -13,12 +12,6 @@ CREATE TABLE "auth_session" (
     "session_key" varchar(40) NOT NULL PRIMARY KEY,
     "session_data" text NOT NULL,
     "expire_date" integer NOT NULL
-);
-
-CREATE TABLE "registration_registrationprofile" (
-    "id" integer NOT NULL PRIMARY KEY,
-    "user_id" integer NOT NULL UNIQUE REFERENCES "auth_user" ("id"),
-    "activation_key" varchar(40) NOT NULL
 );
 
 CREATE TABLE "tile" (

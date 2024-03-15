@@ -85,10 +85,6 @@
 		<div class="content_set_title">Account</div>
 		<div class="content_set_content">
 			<a href="/accounts/password_change/">Change Password</a>
-			{% if !email_verified %}
-			<br>
-			<a href="/accounts/verify_email/{{ classic_csrftoken }}/">Verify Email</a>
-			{% endif %}
 			<br>
 			<a href="/accounts/tabular/">Tabular view</a>
 		</div>

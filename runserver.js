@@ -13,7 +13,6 @@ const fs          = require("fs");
 const http        = require("http");
 const https       = require("https");
 const isIP        = require("net").isIP;
-const nodemailer  = require("nodemailer");
 const path        = require("path");
 const querystring = require("querystring");
 const sql         = require("sqlite3");
@@ -412,8 +411,7 @@ var pages = {
 		register_complete: require("./backend/pages/accounts/register_complete.js"),
 		sso: require("./backend/pages/accounts/sso.js"),
 		tabular: require("./backend/pages/accounts/tabular.js"),
-		verify: require("./backend/pages/accounts/verify.js"),
-		verify_email: require("./backend/pages/accounts/verify_email.js")
+		verify: require("./backend/pages/accounts/verify.js")
 	},
 	admin: {
 		administrator: require("./backend/pages/admin/administrator.js"),
@@ -607,66 +605,6 @@ function loadDbSystems() {
 	db_misc = asyncDbSystem(misc_db);
 }
 
-var transporter;
-var email_available = true;
-
-async function loadEmail() {
-	if(!settings.email.enabled) return;
-	try {
-		if(isTestServer) throw "This is a test server";
-		transporter = nodemailer.createTransport({
-			service: "gmail",
-			auth: {
-				user: settings.email.username,
-				pass: settings.email.password
-			}
-		});
-	} catch(e) {
-		handle_error(e);
-		email_available = false;
-		console.log("\x1b[31;1mEmail disabled. Error message: " + JSON.stringify(process_error_arg(e)) + "\x1b[0m");
-	}
-	try {
-		if(email_available) {
-			await transporter.verify();
-		}
-	} catch(e) {
-		handle_error(e);
-		email_available = false;
-		console.log("\x1b[31;1mEmail is disabled because the verification failed (credentials possibly incorrect)" + JSON.stringify(process_error_arg(e)) + "\x1b[0m");
-	}
-	if(email_available) {
-		console.log("Logged into email");
-	}
-}
-
-async function send_email(destination, subject, text) {
-	var testEmailAddress = "test@localhost";
-	if(isTestServer || subject == testEmailAddress) {
-		console.log("To:", destination);
-		console.log("Subject:", subject);
-		console.log("Body:", text);
-		console.log("================");
-		return null;
-	}
-	if(!email_available) return false;
-	var options = {
-		from: settings.email.display_email,
-		to: destination,
-		subject: subject,
-		html: text
-	}
-	return new Promise(function(resolve) {
-		transporter.sendMail(options, function(error, info) {
-			if (error) {
-				resolve("error");
-			} else {
-				resolve(info);
-			}
-		});
-	});
-}
-
 async function fetchCloudflareIPs(ip_type) {
 	if(ip_type == 4) {
 		ip_type = "ips-v4";
@@ -716,8 +654,6 @@ async function initialize_server() {
 	global_data.db_misc = db_misc;
 	global_data.db_edits = db_edits;
 	global_data.db_ch = db_ch;
-	
-	await loadEmail();
 	
 	if(!await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='server_info'")) {
 		// table to inform that the server is initialized
@@ -1053,7 +989,6 @@ function createEndpoints() {
 	registerEndpoint("accounts/password_change/done", pages.accounts.password_change_done);
 	registerEndpoint("accounts/nsfw/*", pages.accounts.nsfw);
 	registerEndpoint("accounts/tabular", pages.accounts.tabular);
-	registerEndpoint("accounts/verify_email/*", pages.accounts.verify_email);
 	registerEndpoint("accounts/sso", pages.accounts.sso);
 
 	registerEndpoint("ajax/protect", pages.protect);
@@ -1246,7 +1181,6 @@ async function get_user_info(cookies, is_websocket, dispatch) {
 		is_active: false,
 		scripts: [],
 		session_key: "",
-		email: "",
 		uv_rank: 0
 	};
 	if(cookies.sessionid) {
@@ -1256,10 +1190,9 @@ async function get_user_info(cookies, is_websocket, dispatch) {
 			user = JSON.parse(s_data.session_data);
 			if(cookies.csrftoken == user.csrftoken) { // verify csrftoken
 				user.authenticated = true;
-				var userauth = (await db.get("SELECT level, is_active, email FROM auth_user WHERE id=?", user.id));
+				var userauth = (await db.get("SELECT level, is_active FROM auth_user WHERE id=?", user.id));
 				var level = userauth.level;
 				user.is_active = !!userauth.is_active;
-				user.email = userauth.email;
 
 				user.operator = level == 3;
 				user.superuser = level == 2 || level == 3;
@@ -1873,12 +1806,6 @@ function broadcastUserCount() {
 async function loopClearExpiredSessions(no_timeout) {
 	// clear expired sessions
 	await db.run("DELETE FROM auth_session WHERE expire_date <= ?", Date.now());
-	// clear expired registration keys
-	await db.each("SELECT id FROM auth_user WHERE is_active=0 AND ? - date_joined >= ? AND (SELECT COUNT(*) FROM registration_registrationprofile WHERE user_id=auth_user.id) > 0",
-		[Date.now(), ms.day * settings.activation_key_days_expire], async function(data) {
-		var id = data.id;
-		await db.run("DELETE FROM registration_registrationprofile WHERE user_id=?", id);
-	});
 
 	if(!no_timeout) intv.clearExpiredSessions = setTimeout(loopClearExpiredSessions, ms.minute);
 }
@@ -2597,7 +2524,6 @@ var global_data = {
 	new_token,
 	querystring,
 	url,
-	send_email,
 	get_user_info,
 	modules,
 	announce: modifyAnnouncement,
