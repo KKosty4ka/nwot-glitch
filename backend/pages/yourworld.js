@@ -20,7 +20,6 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 	var db = server.db;
 	var modules = server.modules;
 	var loadString = server.loadString;
-	var accountSystem = server.accountSystem;
 	var createCSRF = server.createCSRF;
 
 	var world_name = path;
@@ -81,9 +80,6 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 			pathname = "/" + pathname;
 		}
 		var username = user.username;
-		if(accountSystem == "uvias") {
-			username = user.display_username;
-		}
 		var char_rate = world.opts.charRate;
 		if(char_rate) {
 			char_rate = char_rate.split("/").map(Number);

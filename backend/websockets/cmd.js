@@ -5,7 +5,6 @@ module.exports = async function(ws, data, send, broadcast, server, ctx) {
 
 	var data_rec = data.data;
 	var wss = server.wss;
-	var accountSystem = server.accountSystem;
 	var wsSend = server.wsSend;
 
 	// rate limit commands
@@ -36,14 +35,8 @@ module.exports = async function(ws, data, send, broadcast, server, ctx) {
 
 	if(data.include_username && user.authenticated) {
 		var username = user.username;
-		if(accountSystem == "uvias") {
-			username = user.display_username;
-		}
 		cdata.username = username;
 		cdata.id = user.id;
-		if(accountSystem == "uvias") {
-			cdata.id = cdata.id.substr(1).toUpperCase().padStart(16, "0");
-		}
 	}
 
 	data = JSON.stringify(cdata);
@@ -55,8 +48,8 @@ module.exports = async function(ws, data, send, broadcast, server, ctx) {
 			if(!client.sdata.handleCmdSockets) return;
 			if(client.sdata.user && client.sdata.user.superuser && client.sdata.descriptiveCmd) {
 				wsSend(client, JSON.stringify(Object.assign(cdata, {
-					username: accountSystem == "uvias" ? user.display_username : user.username,
-					id: user.authenticated ? (accountSystem == "uvias" ? user.id.substr(1).toUpperCase().padStart(16, "0") : user.id) : void 0,
+					username: user.username,
+					id: user.authenticated ? user.id : void 0,
 					ip: ws.sdata.ipAddress
 				})));
 			} else {

@@ -7,14 +7,6 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 
 	var db = server.db;
 	var new_token = server.new_token;
-	var accountSystem = server.accountSystem;
-	var uvias = server.uvias;
-	
-	if(accountSystem == "uvias") {
-		return write(null, null, {
-			redirect: uvias.loginPath
-		});
-	}
 
 	var data = {
 		form_errors: params.errors, // "Your username and password didn't match. Please try again."
@@ -38,9 +30,6 @@ module.exports.POST = async function(req, write, server, ctx, params) {
 	var querystring = server.querystring;
 	var url = server.url;
 	var callPage = server.callPage;
-	var accountSystem = server.accountSystem;
-	
-	if(accountSystem == "uvias") return;
 
 	var username = post_data.username;
 	var password = post_data.password;

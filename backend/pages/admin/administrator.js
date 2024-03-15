@@ -11,8 +11,6 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 	var wss = server.wss;
 	var ranks_cache = server.ranks_cache;
 	var db_misc = server.db_misc;
-	var uvias = server.uvias;
-	var accountSystem = server.accountSystem;
 	var createCSRF = server.createCSRF;
 	var getClientVersion = server.getClientVersion;
 
@@ -47,30 +45,7 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 		}
 	}
 
-	var user_ranks;
-	if(accountSystem == "uvias") {
-		var admin_ranks = await db_misc.all("SELECT * FROM admin_ranks ORDER BY level DESC");
-		user_ranks = [];
-		for(var i = 0; i < admin_ranks.length; i++) {
-			var adr = admin_ranks[i];
-			var uid = adr.id.substr(1);
-			var level = adr.level;
-	
-			var username = "deleted~" + uid;
-	
-			var usr_data = await uvias.get("SELECT * FROM accounts.users WHERE uid=('x'||lpad($1::text,16,'0'))::bit(64)::bigint", uid);
-			if(usr_data) {
-				username = usr_data.username;
-			}
-	
-			user_ranks.push({
-				level,
-				username
-			});
-		}
-	} else if(accountSystem == "local") {
-		user_ranks = await db.all("SELECT * FROM auth_user WHERE level > 0 ORDER BY level DESC");
-	}
+	var user_ranks = await db.all("SELECT * FROM auth_user WHERE level > 0 ORDER BY level DESC");
 
 	var csrftoken = createCSRF(user.id, 0);
 

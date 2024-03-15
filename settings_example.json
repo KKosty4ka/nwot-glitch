@@ -25,14 +25,6 @@
 		}
 	},
 
-	"account_system": "local",
-
-	"pg_db": {
-		"user": "",
-		"host": "",
-		"database": ""
-	},
-
 	"error_log": true,
 
 	"paths": {
@@ -46,8 +38,7 @@
 		"uncaught": ".data/nwotdata/exc.err",
 		"restr": ".data/nwotdata/restr.txt",
 		"restr_cg1": ".data/nwotdata/restr_cg1.txt",
-		"static_shortcuts": ".data/nwotdata/static_shortcuts.txt",
-		"uvias_css": ""
+		"static_shortcuts": ".data/nwotdata/static_shortcuts.txt"
 	},
 
 	"email": {

@@ -12,11 +12,6 @@ module.exports.GET = async function(req, write, server, ctx) {
 	var handle_error = server.handle_error;
 	var db = server.db;
 	var new_token = server.new_token;
-	var accountSystem = server.accountSystem;
-
-	if(accountSystem == "uvias") {
-		return;
-	}
 
 	if(!user.authenticated) {
 		return;

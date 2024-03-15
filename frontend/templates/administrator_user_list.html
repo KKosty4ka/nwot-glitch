@@ -22,22 +22,12 @@
 						<th>
 							Username
 						</th>
-						{% if accountSystem == "uvias" %}
-						<th>
-							Display Name
-						</th>
-						{% endif %}
 						<th>
 							Active
 						</th>
 						<th>
 							Level
 						</th>
-						{% if accountSystem == "uvias" %}
-						<th>
-							Rank
-						</th>
-						{% endif %}
 						<th>
 							Last Login
 						</th>
@@ -50,11 +40,6 @@
 						<td>
 							{{user.id}}
 						</td>
-						{% if accountSystem == "uvias" %}
-						<td>
-							{{user.login_name}}
-						</td>
-						{% endif %}
 						<td>
 							{{user.username}}
 						</td>
@@ -64,11 +49,6 @@
 						<td>
 							{{user.level}}
 						</td>
-						{% if accountSystem == "uvias" %}
-						<td>
-							{{user.rank_name}}
-						</td>
-						{% endif %}
 						<td style="white-space: nowrap;">
 							{{user.last_login}}
 						</td>

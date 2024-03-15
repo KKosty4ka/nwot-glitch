@@ -4,15 +4,6 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 	var render = ctx.render;
 	var user = ctx.user;
 
-	var accountSystem = server.accountSystem;
-	var uvias = server.uvias;
-	
-	if(accountSystem == "uvias") {
-		return write(null, null, {
-			redirect: uvias.registerPath
-		});
-	}
-
 	var data = {
 		csrftoken: user.csrftoken,
 		form_username_errors    : params.form_username_errors  || [],
@@ -36,11 +27,6 @@ module.exports.POST = async function(req, write, server, ctx) {
 	var db = server.db;
 	var callPage = server.callPage;
 	var encryptHash = server.encryptHash;
-	var accountSystem = server.accountSystem;
-	
-	if(accountSystem == "uvias") {
-		return;
-	}
 
 	if(post_data.csrfmiddlewaretoken != user.csrftoken) { // csrftokens not matching?
 		return write();

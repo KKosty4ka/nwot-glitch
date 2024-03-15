@@ -77,8 +77,6 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 	var url = server.url;
 	var db = server.db;
 	var callPage = server.callPage;
-	var uvias = server.uvias;
-	var accountSystem = server.accountSystem;
 	var createCSRF = server.createCSRF;
 
 	if(!user.authenticated) {
@@ -108,19 +106,8 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 	var members = Object.keys(world.members.map);
 	var member_list = []; // processed list of members
 	for(var i = 0; i < members.length; i++) {
-		var username;
-		if(accountSystem == "uvias") {
-			var uidt = members[i].slice(1);
-			username = await uvias.get("SELECT * FROM accounts.users WHERE uid=('x'||lpad($1::text,16,'0'))::bit(64)::bigint", uidt);
-			if(!username) {
-				username = "deleted~" + uidt;
-			} else {
-				username = username.username;
-			}
-		} else if(accountSystem == "local") {
-			username = await db.get("SELECT username FROM auth_user WHERE id=?", members[i]);
-			username = username.username;
-		}
+		var username = await db.get("SELECT username FROM auth_user WHERE id=?", members[i]);
+		username = username.username;
 		member_list.push({
 			member_name: username
 		});
@@ -134,18 +121,7 @@ module.exports.GET = async function(req, write, server, ctx, params) {
 	var owner_name = "";
 
 	if(world.ownerId && user.superuser) {
-		if(accountSystem == "uvias") {
-			var debug1 = world.ownerId;
-			if(typeof debug1 == "string") debug1 = debug1.slice(1);
-			owner_name = await uvias.get("SELECT username FROM accounts.users WHERE uid=('x'||lpad($1::text,16,'0'))::bit(64)::bigint", debug1);
-			if(owner_name) {
-				owner_name = owner_name.username;
-			} else {
-				owner_name = "deleted~" + debug1;
-			}
-		} else if(accountSystem == "local") {
-			owner_name = (await db.get("SELECT username FROM auth_user WHERE id=?", [world.ownerId])).username;
-		}
+		owner_name = (await db.get("SELECT username FROM auth_user WHERE id=?", [world.ownerId])).username;
 	}
 
 	var color = world.theme.color || "default";
@@ -269,8 +245,6 @@ module.exports.POST = async function(req, write, server, ctx) {
 	var ws_broadcast = server.ws_broadcast;
 	var chat_mgr = server.chat_mgr;
 	var tile_database = server.tile_database;
-	var uvias = server.uvias;
-	var accountSystem = server.accountSystem;
 	var wss = server.wss;
 	var checkCSRF = server.checkCSRF;
 	var wsSend = server.wsSend;
@@ -308,23 +282,13 @@ module.exports.POST = async function(req, write, server, ctx) {
 	if(post_data.form == "add_member") {
 		var username = post_data.add_member;
 
-		var adduser;
-		var user_id;
-		if(accountSystem == "uvias") {
-			adduser = await uvias.get("SELECT to_hex(uid) AS uid, username from accounts.users WHERE lower(username)=lower($1::text)", username);
-		} else if(accountSystem == "local") {
-			adduser = await db.get("SELECT * from auth_user WHERE username=? COLLATE NOCASE", username);
-		}
+		var adduser = await db.get("SELECT * from auth_user WHERE username=? COLLATE NOCASE", username);
 
 		if(!adduser) {
 			return await callPage("accounts/configure", { message: "User not found" }, req, write, server, ctx);
 		}
 
-		if(accountSystem == "uvias") {
-			user_id = "x" + adduser.uid;
-		} else if(accountSystem == "local") {
-			user_id = adduser.id;
-		}
+		var user_id = adduser.id;
 		
 		if(user_id == world.ownerId) {
 			return await callPage("accounts/configure", {
@@ -397,38 +361,11 @@ module.exports.POST = async function(req, write, server, ctx) {
 		var username_to_remove = to_remove.substr("remove_".length);
 		var revocationStatus = false;
 		var revokedId = "";
-		if(accountSystem == "uvias") {
-			if(username_to_remove.startsWith("deleted~")) {
-				id_to_remove = username_to_remove.substr("deleted~".length);
-				if(id_to_remove.length < 1 || id_to_remove.length > 16) validId = false;
-				var validSet = "0123456789abcdef";
-				for(var c = 0; c < id_to_remove.length; c++) {
-					if(validSet.indexOf(id_to_remove.charAt(c)) == -1) {
-						validId = false;
-						break;
-					}
-				}
-				if(validId) {
-					id_to_remove = "x" + id_to_remove;
-					revocationStatus = await revokeMembershipByWorldName(world.name, id_to_remove);
-					revokedId = id_to_remove;
-				}
-			} else {
-				var remuser = await uvias.get("SELECT to_hex(uid) AS uid, username from accounts.users WHERE lower(username)=lower($1::text)", [username_to_remove]);
-				if(remuser) {
-					var remuid = "x" + remuser.uid;
-					id_to_remove = remuid;
-					revocationStatus = await revokeMembershipByWorldName(world.name, remuid);
-					revokedId = remuid;
-				}
-			}
-		} else if(accountSystem == "local") {
-			var id_to_remove = await db.get("SELECT id FROM auth_user WHERE username=? COLLATE NOCASE", username_to_remove);
-			if(id_to_remove) {
-				id_to_remove = id_to_remove.id;
-				revocationStatus = await revokeMembershipByWorldName(world.name, id_to_remove);
-				revokedId = id_to_remove;
-			}
+		var id_to_remove = await db.get("SELECT id FROM auth_user WHERE username=? COLLATE NOCASE", username_to_remove);
+		if(id_to_remove) {
+			id_to_remove = id_to_remove.id;
+			revocationStatus = await revokeMembershipByWorldName(world.name, id_to_remove);
+			revokedId = id_to_remove;
 		}
 		if(revocationStatus && revocationStatus[0]) {
 			sendWorldStatusUpdate(server, world.id, revokedId, "isMember", false);

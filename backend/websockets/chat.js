@@ -48,7 +48,6 @@ module.exports = async function(ws, data, send, broadcast, server, ctx) {
 	var topActiveWorlds = server.topActiveWorlds;
 	var wss = server.wss;
 	var ranks_cache = server.ranks_cache;
-	var accountSystem = server.accountSystem;
 	var client_ips = server.client_ips;
 	var wsSend = server.wsSend;
 	var broadcastMonitorEvent = server.broadcastMonitorEvent;
@@ -166,9 +165,6 @@ module.exports = async function(ws, data, send, broadcast, server, ctx) {
 	}
 
 	var username_to_display = user.username;
-	if(accountSystem == "uvias") {
-		username_to_display = user.display_username;
-	}
 
 	var chatBlockLimit = 1280;
 
@@ -669,11 +665,7 @@ module.exports = async function(ws, data, send, broadcast, server, ctx) {
 			var user_disp = "(anonymous)";
 			if(user.authenticated) {
 				user_disp = username_to_display;
-				if(accountSystem == "uvias") {
-					user_login = user.username;
-				} else {
-					user_login = user_disp;
-				}
+				user_login = user_disp;
 			}
 			idstr += "Login username: " + user_login + "<br>";
 			idstr += "Display username: " + user_disp + "<br>";

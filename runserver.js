@@ -15,7 +15,6 @@ const https       = require("https");
 const isIP        = require("net").isIP;
 const nodemailer  = require("nodemailer");
 const path        = require("path");
-const pg          = require("pg");
 const querystring = require("querystring");
 const sql         = require("sqlite3");
 const url         = require("url");
@@ -101,18 +100,11 @@ var miscDB         = settings.paths.misc;
 var staticNumsPath = settings.paths.static_shortcuts;
 var restrPath      = settings.paths.restr;
 var restrCg1Path   = settings.paths.restr_cg1;
-var accountSystem  = settings.account_system; // "uvias" or "local"
 
 var loginPath = "/accounts/login/";
 var logoutPath = "/accounts/logout/";
 var registerPath = "/accounts/register/";
 var profilePath = "/accounts/profile/";
-
-if(accountSystem != "uvias" && accountSystem != "local") {
-	console.log("ERROR: Invalid account system: " + accountSystem);
-	sendProcMsg("EXIT");
-	process.exit();
-}
 
 Error.stackTraceLimit = 1024;
 var gzipEnabled = false;
@@ -120,7 +112,6 @@ var shellEnabled = true;
 
 var isTestServer = false;
 var debugLogging = false;
-var testUviasIds = false;
 var serverLoaded = false;
 var isStopping = false;
 
@@ -132,7 +123,6 @@ var pw_encryption = "sha512WithRSAEncryption";
 var wss; // websocket handler
 var monitorWorker;
 var clientVersion = "";
-var pgConn; // postgreSQL connection for Uvias
 var intv = {}; // intervals and timeouts
 var pluginMgr = null;
 
@@ -234,15 +224,11 @@ process.argv.forEach(function(a) {
 		if(!debugLogging) console.log("\x1b[31;1mDebug logging enabled\x1b[0m");
 		debugLogging = true;
 	}
-	if(a == "--uvias-test-info") {
-		testUviasIds = true;
-	}
 	if(a == "--lt") {
 		if(!isTestServer) console.log("\x1b[31;1mThis is a test server\x1b[0m");
 		isTestServer = true;
 		if(!debugLogging) console.log("\x1b[31;1mDebug logging enabled\x1b[0m");
 		debugLogging = true;
-		testUviasIds = true;
 	}
 });
 
@@ -274,93 +260,6 @@ async function runShellScript(includeColors) {
 		resp += "";
 	}
 	return resp;
-}
-
-function makePgClient() {
-	pgConn = new pg.Client({
-		connectionString: "pg://"
-	});
-	console.log("Postgres client connected");
-	pgConn.on("end", function() {
-		console.log("WARNING: Postgres client is closed");
-		if(isStopping) return;
-		setTimeout(uvias_init, 1000 * 2);
-	});
-	pgConn.on("error", function(err) {
-		console.log("ERROR: Postgres client received an error:");
-		console.log(err);
-	});
-}
-if(accountSystem == "uvias") {
-	pg.defaults.user = settings.pg_db.user || "owot";
-	pg.defaults.host = settings.pg_db.host || "/var/run/postgresql";
-	pg.defaults.database = settings.pg_db.database || "uvias";
-}
-
-var uvias = {
-	stats: {
-		runningAll: 0,
-		runningGet: 0,
-		runningRun: 0
-	}
-};
-
-uvias.all = async function(query, data) {
-	if(data != void 0 && !Array.isArray(data)) data = [data];
-	uvias.stats.runningAll++;
-	var result = await pgConn.query(query, data);
-	uvias.stats.runningAll--;
-	return result.rows;
-}
-
-uvias.get = async function(query, data) {
-	if(data != void 0 && !Array.isArray(data)) data = [data];
-	uvias.stats.runningGet++;
-	var result = await pgConn.query(query, data);
-	uvias.stats.runningGet--;
-	return result.rows[0];
-}
-
-uvias.run = async function(query, data) {
-	if(data != void 0 && !Array.isArray(data)) data = [data];
-	uvias.stats.runningRun++;
-	await pgConn.query(query, data);
-	uvias.stats.runningRun--;
-}
-
-if(testUviasIds) {
-	uvias.id = "owottest";
-	uvias.name = "Our World Of Text Test Server";
-	uvias.domain = "test.ourworldoftext.com";
-	uvias.private = true;
-	uvias.only_verified = false;
-	uvias.custom_css_file_path = settings.paths.uvias_css;
-} else {
-	uvias.id = "owot";
-	uvias.name = "Our World Of Text";
-	uvias.domain = "ourworldoftext.com";
-	uvias.private = false;
-	uvias.only_verified = false;
-	uvias.custom_css_file_path = settings.paths.uvias_css;
-}
-
-if(uvias.custom_css_file_path) {
-	uvias.custom_css_file_path = path.resolve(uvias.custom_css_file_path);
-}
-
-uvias.sso = "/accounts/sso";
-// redirect to /accounts/logout/ to clear token cookie
-uvias.logout = "/accounts/logout/?return=" + "/home/";
-uvias.address = "https://uvias.com";
-uvias.loginPath = uvias.address + "/api/loginto/" + uvias.id;
-uvias.logoutPath = uvias.address + "/logoff?service=" + uvias.id;
-uvias.registerPath = uvias.address + "/api/loginto/" + uvias.id + "#create";
-uvias.profilePath = uvias.address + "/profile/@me";
-if(accountSystem == "uvias") {
-	loginPath = uvias.loginPath;
-	logoutPath = uvias.logoutPath;
-	registerPath = uvias.registerPath;
-	profilePath = uvias.profilePath;
 }
 
 function toHex64(n) {
@@ -743,7 +642,6 @@ async function loadEmail() {
 
 async function send_email(destination, subject, text) {
 	var testEmailAddress = "test@localhost";
-	if(accountSystem != "local") return;
 	if(isTestServer || subject == testEmailAddress) {
 		console.log("To:", destination);
 		console.log("Subject:", subject);
@@ -819,13 +717,7 @@ async function initialize_server() {
 	global_data.db_edits = db_edits;
 	global_data.db_ch = db_ch;
 	
-	if(accountSystem == "uvias") {
-		await uvias_init();
-	}
-
-	if(accountSystem == "local") {
-		await loadEmail();
-	}
+	await loadEmail();
 	
 	if(!await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='server_info'")) {
 		// table to inform that the server is initialized
@@ -1333,28 +1225,6 @@ function manage_https() {
 	}
 }
 
-// parse Uvias account token
-function parseToken(token) {
-	if(typeof token != "string") return false;
-	token = token.split("|");
-	if(token.length != 2) return false;
-	var uid1 = token[0].toLowerCase();
-	var sid2 = token[1];
-	if(uid1.length < 1 || uid1.length > 16) return false;
-	if(sid2.length < 1 || sid2.length > 24) return false;
-	var alpha = "0123456789abcdef";
-	for(var i = 0; i < uid1.length; i++) {
-		if(alpha.indexOf(uid1.charAt(i)) == -1) return false;
-	}
-	var uid = toInt64(uid1).toString();
-	var session_id = Buffer.from(sid2, "base64");
-	if(session_id.length != 16) return false;
-	return {
-		uid,
-		session_id
-	};
-}
-
 // TODO: cache user data (only care about uvias)
 async function get_user_info(cookies, is_websocket, dispatch) {
 	/*
@@ -1364,7 +1234,6 @@ async function get_user_info(cookies, is_websocket, dispatch) {
 		1: Staff
 		0: regular user
 	*/
-	var date = Date.now();
 	var user = {
 		authenticated: false,
 		username: "",
@@ -1380,7 +1249,7 @@ async function get_user_info(cookies, is_websocket, dispatch) {
 		email: "",
 		uv_rank: 0
 	};
-	if(accountSystem == "local" && cookies.sessionid) {
+	if(cookies.sessionid) {
 		// user data from session
 		var s_data = await db.get("SELECT * FROM auth_session WHERE session_key=?", cookies.sessionid);
 		if(s_data) {
@@ -1406,78 +1275,6 @@ async function get_user_info(cookies, is_websocket, dispatch) {
 		}
 	}
 
-	if(accountSystem == "uvias" && cookies.token) {
-		var parsed = await uvias.get("SELECT * FROM accounts.parse_token($1::text)", [cookies.token]);
-		var success = false;
-		var has_refreshed = false;
-		if(parsed) {
-			var uid = parsed.uid;
-			var session_id = parsed.session_id;
-			// check if this session id belongs to a user
-			var session = await uvias.get("SELECT * FROM accounts.get_session($1::bigint, $2::bytea)", [uid, session_id]);
-			if(session) {
-				// both guests and users are included
-				var user_account = await uvias.get("SELECT to_hex(uid) as uid, username, rank_id FROM accounts.users WHERE uid=$1::bigint", uid);
-				if(user_account) {
-					success = true;
-					var session_expire = session.expires.getTime();
-					var session_halfway = session_expire - (ms.day * 3.5);
-					if(date >= session_halfway) { // refresh token if it is about to expire
-						var ref_res = await uvias.get("SELECT * FROM accounts.refresh_session($1::bigint, $2::bytea)", [uid, session_id]);
-						if(ref_res) {
-							has_refreshed = true;
-							var new_expiry_time = ref_res.new_expiry_time;
-							var is_persistent = ref_res.is_persistent;
-						}
-					}
-					// only users, not guests
-					var links_local = await uvias.get("SELECT to_hex(uid) as uid, login_name, email, email_verified FROM accounts.links_local WHERE uid=$1::bigint", uid);
-					user.authenticated = true;
-					user.display_username = user_account.username;
-					user.uv_rank = user_account.rank_id;
-					if(links_local) {
-						user.is_active = links_local.email_verified;
-						user.email = links_local.email;
-						user.username = links_local.login_name;
-						user.id = "x" + links_local.uid;
-					} else {
-						user.username = user_account.username;
-						user.id = "x" + user_account.uid;
-					}
-
-					// no data yet
-					user.operator = false;
-					user.superuser = false;
-					user.staff = false;
-					
-					var rank_data = await db_misc.get("SELECT level FROM admin_ranks WHERE id=?", user.id);
-					if(rank_data) {
-						var level = rank_data.level;
-
-						user.operator = level == 3;
-						user.superuser = level == 2 || level == 3;
-						user.staff = level == 1 || level == 2 || level == 3;
-					}
-
-					// TODO: might want to add a public script repository for OWOT and remove/change this
-					if(user.staff && !is_websocket) {
-						user.scripts = await db.all("SELECT * FROM scripts WHERE owner_id=? AND enabled=1", user.id);
-					} else {
-						user.scripts = [];
-					}
-
-					user.csrftoken = new_token(32);
-					user.session_key = cookies.token;
-				}
-			}
-		}
-		/*if(!success) {
-			// if the token is invalid, delete the cookie
-			if(dispatch) {
-				dispatch.addCookie("token=; expires=" + http_time(0) + "; path=/");
-			}
-		}*/
-	}
 	return user;
 }
 
@@ -1839,7 +1636,6 @@ async function process_request(req, res, compCallbacks) {
 			data.logoutPath = logoutPath;
 			data.registerPath = registerPath;
 			data.profilePath = profilePath;
-			data.accountSystem = accountSystem;
 			var staticVersion = getClientVersion();
 			if(staticVersion) {
 				staticVersion = "?v=" + staticVersion;
@@ -2124,72 +1920,6 @@ function initWebsocketPingInterval() {
 			}
 		});
 	}, 1000 * 30);
-}
-
-async function uviasSendIdentifier() {
-	await uvias.run("SELECT accounts.set_service_info($1::text, $2::text, $3::text, $4::text, $5::text, $6::integer, $7::boolean, $8::boolean, $9::text);",
-		[uvias.id, uvias.name, uvias.domain, uvias.sso, uvias.logout, process.pid, uvias.private, uvias.only_verified, uvias.custom_css_file_path]);
-	console.log("Sent service identifier");
-}
-
-async function uvias_init() {
-	makePgClient();
-
-	console.log("Connecting to account database...");
-	try {
-		await pgConn.connect();
-	} catch(e) {
-		handle_error(e);
-		// the connection failed - stop right there and wait for the connection to reload
-		return;
-	}
-	await uviasSendIdentifier();
-
-	await uvias.run("LISTEN uv_kick");
-	await uvias.run("LISTEN uv_sess_renew");
-	await uvias.run("LISTEN uv_rep_upd");
-	await uvias.run("LISTEN uv_user_upd");
-	await uvias.run("LISTEN uv_user_del");
-	await uvias.run("LISTEN uv_service");
-	await uvias.run("LISTEN uv_rank_upd");
-
-	pgConn.on("notification", async function(notif) {
-		var channel = notif.channel;
-		var data;
-		try {
-			data = JSON.parse(notif.payload);
-		} catch(e) {
-			console.log("Malformed data:", notif.payload);
-			return;
-		}
-		switch(channel) {
-			case "uv_kick":
-				invalidateWebsocketSession(data.session);
-				if(debugLogging) console.log("Signal uv_kick. Session '" + data.session + "', Reason '" + data.reason + "'");
-				break;
-			case "uv_sess_renew":
-				if(debugLogging) console.log("Signal uv_sess_renew. Session '" + data.session + "'");
-				break;
-			case "uv_rep_upd":
-				if(debugLogging) console.log("Signal uv_rep_upd. UID 'x" + toHex64(toInt64(data.uid)) + "'");
-				break;
-			case "uv_user_upd":
-				if(debugLogging) console.log("Signal uv_user_upd. UID 'x" + toHex64(toInt64(data.uid)) + "'");
-				break;
-			case "uv_user_del":
-				if(debugLogging) console.log("Signal uv_user_del. UID 'x" + toHex64(toInt64(data.uid)) + "'");
-				break;
-			case "uv_service":
-				if(debugLogging) console.log("Signal uv_service. ID '" + data.id + "'");
-				if(data.id == "uvias") {
-					await uviasSendIdentifier();
-				}
-				break;
-			case "uv_rank_upd":
-				if(debugLogging) console.log("Signal uv_rank_upd. ID '" + data.id + "'");
-				break;
-		}
-	});
 }
 
 function wsSend(socket, data) {
@@ -2766,9 +2496,7 @@ async function start_server() {
 	await loadAnnouncement();
 	loadRestrictionsList();
 	
-	if(accountSystem == "local") {
-		await loopClearExpiredSessions();
-	}
+	await loopClearExpiredSessions();
 
 	await loopCommitRestrictions();
 
@@ -2862,8 +2590,6 @@ var global_data = {
 	loadString,
 	restrictions,
 	saveRestrictions,
-	uvias,
-	accountSystem,
 	callPage,
 	ms,
 	checkHash,
@@ -2887,7 +2613,6 @@ var global_data = {
 	static_data,
 	stopServer,
 	broadcastMonitorEvent,
-	uviasSendIdentifier,
 	client_cursor_pos,
 	loadShellFile,
 	runShellScript,
@@ -2960,10 +2685,6 @@ function stopServer(restart, maintenance) {
 					HTTPSockets[id].destroy();
 				}
 
-				if(accountSystem == "uvias") {
-					pgConn.end();
-				}
-
 				if(monitorWorker && settings.monitor && settings.monitor.enabled) {
 					monitorWorker.terminate();
 				}
@@ -2974,9 +2695,7 @@ function stopServer(restart, maintenance) {
 				plugin.server_exit();
 			}
 
-			if(accountSystem == "local") {
-				await loopClearExpiredSessions(true);
-			}
+			await loopClearExpiredSessions(true);
 
 			await loopCommitRestrictions(true);
 		} catch(e) {

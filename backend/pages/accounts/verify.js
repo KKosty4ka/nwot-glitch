@@ -7,11 +7,6 @@ module.exports.GET = async function(req, write, server, ctx) {
 	var url = server.url;
 	var db = server.db;
 	var callPage = server.callPage;
-	var accountSystem = server.accountSystem;
-
-	if(accountSystem == "uvias") {
-		return;
-	}
 
 	// gets id from /accounts/verify/{key}/
 	var verification_key = checkURLParam("/accounts/verify/:key", path).key;
