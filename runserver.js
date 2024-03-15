@@ -409,7 +409,6 @@ var pages = {
 		profile: require("./backend/pages/accounts/profile.js"),
 		register: require("./backend/pages/accounts/register.js"),
 		register_complete: require("./backend/pages/accounts/register_complete.js"),
-		sso: require("./backend/pages/accounts/sso.js"),
 		tabular: require("./backend/pages/accounts/tabular.js"),
 		verify: require("./backend/pages/accounts/verify.js")
 	},
