@@ -3,8 +3,8 @@
 
 	"website": "https://ourworldoftext.com/",
 
-	// no idea how to get this working on glitch
 	"monitor": {
+		"_comment": "no idea how to get this working on glitch",
 		"enabled": false,
 		"port": null,
 		"ip": null,
