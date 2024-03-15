@@ -6,6 +6,7 @@
 * Go to your project's page and wait for it to load.
 * Open terminal and type `cat .data/admin_creds.txt` to get the admin credentials.
     * Make sure to change the password or (even better) create a new account and give it OP.
+* Pray it works.
 
 ## License
 Our World of Text is licensed under the [MIT License](https://github.com/system2k/nodeworldoftext/blob/master/LICENSE).
