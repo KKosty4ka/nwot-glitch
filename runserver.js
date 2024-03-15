@@ -69,13 +69,16 @@ var ipv6_to_range  = ipaddress.ipv6_to_range;
 var is_cf_ipv4_int = ipaddress.is_cf_ipv4_int;
 var is_cf_ipv6_int = ipaddress.is_cf_ipv6_int;
 
-var DATA_PATH = ".data/nwotdata/";
+var DATA_PATH = "./.data/nwotdata/";
 var SETTINGS_PATH = DATA_PATH + "settings.json";
 
 function initializeDirectoryStruct() {
 	// create the data folder that stores all of the server's data
 	if(!fs.existsSync(DATA_PATH)) {
-		fs.mkdirSync(DATA_PATH, 0o777);
+		fs.mkdirSync(DATA_PATH, {
+			recursive: true,
+			mode: 0o777
+		});
 	}
 	// initialize server configuration
 	if(!fs.existsSync(SETTINGS_PATH)) {
@@ -409,8 +412,7 @@ var pages = {
 		profile: require("./backend/pages/accounts/profile.js"),
 		register: require("./backend/pages/accounts/register.js"),
 		register_complete: require("./backend/pages/accounts/register_complete.js"),
-		tabular: require("./backend/pages/accounts/tabular.js"),
-		verify: require("./backend/pages/accounts/verify.js")
+		tabular: require("./backend/pages/accounts/tabular.js")
 	},
 	admin: {
 		administrator: require("./backend/pages/admin/administrator.js"),
@@ -672,6 +674,7 @@ async function initialize_server() {
 
 		init = true;
 		account_prompt();
+		stopServer(true, false);
 	}
 	if(!init) {
 		start_server();
@@ -764,7 +767,7 @@ function account_prompt() {
 	var username = "admin";
 	var password = crypto.randomBytes(32).toString("hex");
 
-	db.run("INSERT INTO auth_user VALUES(null, ?, '', ?, 1, 3, ?, ?)", [username, encryptHash(password), Date.now(), Date.now()]);
+	db.run("INSERT INTO auth_user VALUES(null, ?, ?, 1, 3, ?, ?)", [username, encryptHash(password), Date.now(), Date.now()]);
 	fs.writeFileSync(".data/admin_creds.txt", `Username: ${username}\nPassword: ${password}\nPlease change it!`, {
 		encoding: "utf-8"
 	});
