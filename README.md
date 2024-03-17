@@ -5,7 +5,7 @@
     * URL: `https://github.com/KKosty4ka/nwot-glitch.git`
 * Go to your project's page and wait for it to load.
 * Open terminal and type `cat .data/admin_creds.txt` to get the admin credentials.
-    * Make sure to change the password or (even better) create a new account and give it OP.
+    * Make sure to change the password (**on the website, not in the file you fucking moron**) or (even better) create a new account and give it OP.
 * Pray it works.
 
 ## License
