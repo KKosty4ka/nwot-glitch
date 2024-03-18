@@ -1404,6 +1404,7 @@ async function process_request(req, res, compCallbacks) {
 	var acceptEncoding = parseAcceptEncoding(req.headers["accept-encoding"]);
 
 	var realIp = req.headers["X-Forwarded-For"] || req.headers["x-forwarded-for"];
+	realIp = realIp.split(",")[0];
 	var remIp = req.socket.remoteAddress;
 	var evalIp = evaluateIpAddress(remIp, realIp);
 	var ipAddress = evalIp[0];
